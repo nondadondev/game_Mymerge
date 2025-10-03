@@ -1,23 +1,33 @@
 // File: Assets/Editor/BatchSpriteBorderTools.cs
-// Unity 2020+ 호환. 에디터 전용.
+// Unity 2020+ (Editor only).
+// 변경점 요약:
+// 1) 전역 가드(SpriteBorderApplyGuard.InManualApply) 추가 → 윈도에서 수동 적용 중엔 Postprocessor가 개입하지 않음.
+// 2) 픽셀 모드 절대값 보장(원하면 ensurePositiveCenter 옵션으로만 최소 센터 폭 보정).
+// 3) 싱글=importer.spriteBorder, 멀티=metas[i].border 정확 적용(L,B,R,T).
+// 4) 불필요한 재임포트 최소화, 적용 후 실제 반영치 로그로 검증.
 
 #if UNITY_EDITOR
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using UnityEditor;
-using UnityEditor.AssetImporters;
 using UnityEngine;
+
+// ──────────────────────────────────────────────────────────────────────────
+// 전역 가드: 수동 일괄 적용 중에는 Postprocessor가 스킵하도록 신호
+// ──────────────────────────────────────────────────────────────────────────
+internal static class SpriteBorderApplyGuard
+{
+    public static bool InManualApply = false;
+}
 
 public class BatchSpriteBorderSetterWindow : EditorWindow
 {
-    // 입력 모드
     private enum BorderMode { Pixels, Percent, AutoDetectAlpha }
 
     private BorderMode mode = BorderMode.Pixels;
 
-    // 픽셀/퍼센트 입력
+    // 입력값(L/R/T/B) - 사람이 보기 좋은 순서
     private int leftPx = 32, rightPx = 32, topPx = 32, bottomPx = 32;
     private float leftPercent = 0.12f, rightPercent = 0.12f, topPercent = 0.12f, bottomPercent = 0.12f;
 
@@ -29,12 +39,14 @@ public class BatchSpriteBorderSetterWindow : EditorWindow
     private bool setCompression = false;
     private TextureImporterCompression compression = TextureImporterCompression.Uncompressed;
 
-    // 자동 감지 옵션
-    private bool autodetectClampToEven = true;   // 보더가 9-slice에 깔끔하게 떨어지도록 짝수 맞춤
-    private byte alphaThreshold = 5;              // 0~255
-    private int marginSafety = 1;                 // 감지선 안쪽으로 여유 픽셀
+    // 절대값 보장 옵션
+    private bool ensurePositiveCenter = false; // 기본: 꺼둠(네가 넣은 픽셀을 최대한 그대로)
 
-    // 대상 폴더
+    // 오토디텍트 옵션
+    private bool autodetectClampToEven = true;
+    private byte alphaThreshold = 5; // 0~255
+    private int marginSafety = 1;
+
     private DefaultAsset targetFolder;
 
     [MenuItem("Tools/UI/Batch Sprite Border Setter")]
@@ -42,38 +54,38 @@ public class BatchSpriteBorderSetterWindow : EditorWindow
     {
         var win = GetWindow<BatchSpriteBorderSetterWindow>();
         win.titleContent = new GUIContent("Sprite Border Setter");
-        win.minSize = new Vector2(420, 480);
+        win.minSize = new Vector2(440, 520);
         win.Show();
     }
 
     private void OnGUI()
     {
         EditorGUILayout.LabelField("Batch Sprite Border Setter", EditorStyles.boldLabel);
-        EditorGUILayout.Space(8);
+        EditorGUILayout.Space(6);
 
-        // 모드 선택
+        // 모드
         EditorGUILayout.LabelField("Border Mode", EditorStyles.boldLabel);
         mode = (BorderMode)EditorGUILayout.EnumPopup("Mode", mode);
 
         if (mode == BorderMode.Pixels)
         {
             EditorGUILayout.LabelField("Pixels (absolute)", EditorStyles.miniBoldLabel);
-            leftPx   = EditorGUILayout.IntField("Left (px)",   leftPx);
-            rightPx  = EditorGUILayout.IntField("Right (px)",  rightPx);
-            topPx    = EditorGUILayout.IntField("Top (px)",    topPx);
+            leftPx   = EditorGUILayout.IntField("Left (px)", leftPx);
+            rightPx  = EditorGUILayout.IntField("Right (px)", rightPx);
+            topPx    = EditorGUILayout.IntField("Top (px)", topPx);
             bottomPx = EditorGUILayout.IntField("Bottom (px)", bottomPx);
         }
         else if (mode == BorderMode.Percent)
         {
             EditorGUILayout.LabelField("Percent of sprite rect (0~1)", EditorStyles.miniBoldLabel);
-            leftPercent   = Mathf.Clamp01(EditorGUILayout.FloatField("Left (%)",   leftPercent));
-            rightPercent  = Mathf.Clamp01(EditorGUILayout.FloatField("Right (%)",  rightPercent));
-            topPercent    = Mathf.Clamp01(EditorGUILayout.FloatField("Top (%)",    topPercent));
+            leftPercent   = Mathf.Clamp01(EditorGUILayout.FloatField("Left (%)", leftPercent));
+            rightPercent  = Mathf.Clamp01(EditorGUILayout.FloatField("Right (%)", rightPercent));
+            topPercent    = Mathf.Clamp01(EditorGUILayout.FloatField("Top (%)", topPercent));
             bottomPercent = Mathf.Clamp01(EditorGUILayout.FloatField("Bottom (%)", bottomPercent));
         }
         else
         {
-            EditorGUILayout.LabelField("Auto Detect by Alpha (transparent edges)", EditorStyles.miniBoldLabel);
+            EditorGUILayout.LabelField("Auto Detect by Alpha", EditorStyles.miniBoldLabel);
             alphaThreshold = (byte)Mathf.Clamp(EditorGUILayout.IntSlider("Alpha Threshold", alphaThreshold, 0, 255), 0, 255);
             marginSafety = EditorGUILayout.IntField("Inner Safety Margin (px)", marginSafety);
             autodetectClampToEven = EditorGUILayout.Toggle("Clamp to Even Pixels", autodetectClampToEven);
@@ -81,69 +93,67 @@ public class BatchSpriteBorderSetterWindow : EditorWindow
 
         EditorGUILayout.Space(6);
         EditorGUILayout.LabelField("Import/Common Options", EditorStyles.boldLabel);
-        forceSprite2DUI = EditorGUILayout.Toggle("Force TextureType: Sprite(2D/UI)", forceSprite2DUI);
-        setMeshFullRect = EditorGUILayout.Toggle("Mesh Type: Full Rect", setMeshFullRect);
-        setPPU = EditorGUILayout.Toggle("Set Pixels Per Unit", setPPU);
+        forceSprite2DUI  = EditorGUILayout.Toggle("Force TextureType: Sprite(2D/UI)", forceSprite2DUI);
+        setMeshFullRect  = EditorGUILayout.Toggle("Mesh Type: Full Rect", setMeshFullRect);
+        setPPU           = EditorGUILayout.Toggle("Set Pixels Per Unit", setPPU);
         if (setPPU == true) pixelsPerUnit = EditorGUILayout.IntField("Pixels Per Unit", pixelsPerUnit);
-        setCompression = EditorGUILayout.Toggle("Set Compression", setCompression);
+        setCompression   = EditorGUILayout.Toggle("Set Compression", setCompression);
         if (setCompression == true) compression = (TextureImporterCompression)EditorGUILayout.EnumPopup("Compression", compression);
 
+        EditorGUILayout.Space(6);
+        ensurePositiveCenter = EditorGUILayout.Toggle(new GUIContent("Ensure center > 0 (balanced clamp)"), ensurePositiveCenter);
+
         EditorGUILayout.Space(10);
-        // 선택에 적용
         using (new EditorGUILayout.HorizontalScope())
         {
-            if (GUILayout.Button("Apply To Selection", GUILayout.Height(32)))
+            if (GUILayout.Button("Apply To Selection", GUILayout.Height(30)))
             {
-                var paths = Selection.assetGUIDs.Select(AssetDatabase.GUIDToAssetPath)
-                                                .Where(p => p.EndsWith(".png", StringComparison.OrdinalIgnoreCase) ||
-                                                            p.EndsWith(".psd", StringComparison.OrdinalIgnoreCase) ||
-                                                            p.EndsWith(".tga", StringComparison.OrdinalIgnoreCase))
-                                                .ToArray();
+                var paths = Selection.assetGUIDs
+                    .Select(AssetDatabase.GUIDToAssetPath)
+                    .Where(IsSupportedTexturePath)
+                    .ToArray();
                 ApplyToPaths(paths);
             }
         }
 
-        // 폴더에 적용
         targetFolder = (DefaultAsset)EditorGUILayout.ObjectField("Target Folder", targetFolder, typeof(DefaultAsset), false);
-        if (GUILayout.Button("Apply To Folder (recursive)", GUILayout.Height(26)))
+        using (new EditorGUI.DisabledScope(targetFolder == null))
         {
-            if (targetFolder != null)
+            if (GUILayout.Button("Apply To Folder (recursive)", GUILayout.Height(26)))
             {
                 string folderPath = AssetDatabase.GetAssetPath(targetFolder);
                 string[] guids = AssetDatabase.FindAssets("t:Texture2D", new[] { folderPath });
-                var paths = guids.Select(AssetDatabase.GUIDToAssetPath)
-                                 .Where(p => p.EndsWith(".png", StringComparison.OrdinalIgnoreCase) ||
-                                             p.EndsWith(".psd", StringComparison.OrdinalIgnoreCase) ||
-                                             p.EndsWith(".tga", StringComparison.OrdinalIgnoreCase))
-                                 .ToArray();
+                var paths = guids.Select(AssetDatabase.GUIDToAssetPath).Where(IsSupportedTexturePath).ToArray();
                 ApplyToPaths(paths);
-            }
-            else
-            {
-                EditorUtility.DisplayDialog("Folder Required", "대상 폴더를 지정하세요.", "확인");
             }
         }
 
-        EditorGUILayout.Space(8);
+        EditorGUILayout.Space(6);
         EditorGUILayout.HelpBox(
-            "권장: 9-slice는 Full Rect 메시 사용. Atlas에서는 Tight Packing/Rotation을 끄세요. " +
-            "Alpha Auto Detect는 투명 배경의 라운드 버튼/패널에 효과적입니다.", MessageType.Info);
+            "픽셀 모드 = 절대값. 퍼센트/규칙 Postprocessor가 뒤에서 덮어쓰지 않도록, 이 창이 작업 중일 때는 Postprocessor 가드로 차단됩니다.\n" +
+            "권장: 9-slice는 Full Rect 메시, 아틀라스 Tight/Rotation 끄기.", MessageType.Info);
+    }
+
+    private bool IsSupportedTexturePath(string p)
+    {
+        return p.EndsWith(".png", StringComparison.OrdinalIgnoreCase)
+            || p.EndsWith(".psd", StringComparison.OrdinalIgnoreCase)
+            || p.EndsWith(".tga", StringComparison.OrdinalIgnoreCase);
     }
 
     private void ApplyToPaths(string[] texturePaths)
     {
         int ok = 0, fail = 0;
+
+        SpriteBorderApplyGuard.InManualApply = true; // ★ 가드 켜기
         try
         {
             AssetDatabase.StartAssetEditing();
-
             foreach (var path in texturePaths)
             {
                 try
                 {
-                    bool changed = ProcessOneTexture(path);
-                    if (changed == true) ok++;
-                    else ok++; // 적용할 게 없어도 OK로 집계
+                    if (ProcessOneTexture(path) == true) ok++; else ok++;
                 }
                 catch (Exception e)
                 {
@@ -157,151 +167,208 @@ public class BatchSpriteBorderSetterWindow : EditorWindow
             AssetDatabase.StopAssetEditing();
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
+            SpriteBorderApplyGuard.InManualApply = false; // ★ 가드 끄기
         }
 
-        EditorUtility.DisplayDialog("Done",
-            $"Processed: {texturePaths.Length}\nSuccess: {ok}\nFail: {fail}", "OK");
+        EditorUtility.DisplayDialog("Done", $"Processed: {texturePaths.Length}\nSuccess: {ok}\nFail: {fail}", "OK");
     }
 
     private bool ProcessOneTexture(string path)
-{
-    var importer = AssetImporter.GetAtPath(path) as TextureImporter;
-    if (importer == null) return false;
-
-    // 1) 스프라이트 강제 설정 (필요시)
-    if (forceSprite2DUI == true)
     {
-        importer.textureType = TextureImporterType.Sprite;
-        importer.spriteImportMode = (importer.spriteImportMode == SpriteImportMode.Multiple)
-            ? SpriteImportMode.Multiple
-            : SpriteImportMode.Single;
-    }
+        var importer = AssetImporter.GetAtPath(path) as TextureImporter;
+        if (importer == null) return false;
 
-    // 2) 압축/PPU 설정 (옵션)
-    if (setCompression == true) importer.textureCompression = compression;
-    if (setPPU == true) importer.spritePixelsPerUnit = pixelsPerUnit;
+        bool changed = false;
 
-    // 3) MeshType = FullRect 강제 (심볼 이슈 방지: TextureImporterSettings 경유)
-    if (setMeshFullRect == true)
-    {
-        var tis = new TextureImporterSettings();
-        importer.ReadTextureSettings(tis);
-        tis.spriteMeshType = SpriteMeshType.FullRect; // ★ 핵심: 직접 할당 대신 Settings 경유
-        importer.SetTextureSettings(tis);
-    }
-
-    // 4) Single vs Multiple
-    if (importer.spriteImportMode == SpriteImportMode.Single)
-    {
-        Vector4 border = CalculateBorderForSingle(path, importer);
-        importer.spriteBorder = border; // Vector4 순서: (Left, Bottom, Right, Top)
-        importer.SaveAndReimport();
-        return true;
-    }
-    else
-    {
-        // Multiple: 각 SpriteMetaData에 border 설정
-        var metas = importer.spritesheet;
-        if (metas == null || metas.Length == 0)
+        // 1) Sprite 강제(선택)
+        if (forceSprite2DUI == true && importer.textureType != TextureImporterType.Sprite)
         {
-            importer.SaveAndReimport();
-            return false;
+            importer.textureType = TextureImporterType.Sprite;
+            changed = true;
         }
 
-        // 원본 텍스쳐 크기
-        Texture2D tex = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+        // 2) 압축/PPU
+        if (setCompression == true && importer.textureCompression != compression)
+        {
+            importer.textureCompression = compression;
+            changed = true;
+        }
+        if (setPPU == true && importer.spritePixelsPerUnit != pixelsPerUnit)
+        {
+            importer.spritePixelsPerUnit = pixelsPerUnit;
+            changed = true;
+        }
+
+        // 3) MeshType = FullRect
+        if (setMeshFullRect == true)
+        {
+            var tis = new TextureImporterSettings();
+            importer.ReadTextureSettings(tis);
+            if (tis.spriteMeshType != SpriteMeshType.FullRect)
+            {
+                tis.spriteMeshType = SpriteMeshType.FullRect;
+                importer.SetTextureSettings(tis);
+                changed = true;
+            }
+        }
+
+        // 4) Border 적용
+        var tex = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
         int texW = tex != null ? tex.width : 0;
         int texH = tex != null ? tex.height : 0;
 
-        for (int i = 0; i < metas.Length; i++)
+        if (importer.spriteImportMode == SpriteImportMode.Single)
         {
-            var m = metas[i];
-            var border = CalculateBorderForRect(path, importer, m.rect, texW, texH);
-            m.border = border; // Vector4 순서 동일: (Left, Bottom, Right, Top)
-            metas[i] = m;
+            Rect r = new Rect(0, 0, texW, texH);
+            Vector4 border = CalculateBorderForRect(path, importer, r);
+            if (importer.spriteBorder != border)
+            {
+                importer.spriteBorder = border; // (L,B,R,T)
+                changed = true;
+            }
+        }
+        else
+        {
+            var metas = importer.spritesheet;
+            if (metas != null && metas.Length > 0)
+            {
+                bool metaChanged = false;
+                for (int i = 0; i < metas.Length; i++)
+                {
+                    var m = metas[i];
+                    Vector4 newBorder = CalculateBorderForRect(path, importer, m.rect);
+                    if (m.border != newBorder)
+                    {
+                        m.border = newBorder; // (L,B,R,T)
+                        metas[i] = m;
+                        metaChanged = true;
+                    }
+                }
+                if (metaChanged == true)
+                {
+                    importer.spritesheet = metas;
+                    changed = true;
+                }
+            }
         }
 
-        importer.spritesheet = metas;
-        importer.SaveAndReimport();
-        return true;
+        if (changed == true)
+        {
+            importer.SaveAndReimport();
+
+            // 검증 로그
+            var re = AssetImporter.GetAtPath(path) as TextureImporter;
+            if (re != null)
+            {
+                if (re.spriteImportMode == SpriteImportMode.Single)
+                {
+                    Vector4 b = re.spriteBorder;
+                    Debug.Log($"[Applied:Single] {path} -> L:{b.x}, B:{b.y}, R:{b.z}, T:{b.w}");
+                }
+                else
+                {
+                    foreach (var m in re.spritesheet)
+                    {
+                        var b = m.border;
+                        Debug.Log($"[Applied:Multi] {path}::{m.name} -> L:{b.x}, B:{b.y}, R:{b.z}, T:{b.w}");
+                    }
+                }
+            }
+        }
+
+        return changed;
     }
-}
 
-
-    private Vector4 CalculateBorderForSingle(string path, TextureImporter importer)
-    {
-        // 단일 스프라이트 전체 영역
-        Rect r = new Rect(0, 0, importer.spritePixelsPerUnit > 0 ? importer.spritePixelsPerUnit : 100, 100);
-        // 실제 텍스쳐 크기 가져오기
-        Texture2D tex = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
-        if (tex != null) r = new Rect(0, 0, tex.width, tex.height);
-        return CalculateBorderForRect(path, importer, r, tex != null ? tex.width : 0, tex != null ? tex.height : 0);
-    }
-
-    private Vector4 CalculateBorderForRect(string path, TextureImporter importer, Rect spriteRect, int texW, int texH)
+    // 내부 Vector4는 (Left, Bottom, Right, Top)
+    private Vector4 CalculateBorderForRect(string path, TextureImporter importer, Rect spriteRect)
     {
         int w = Mathf.RoundToInt(spriteRect.width);
         int h = Mathf.RoundToInt(spriteRect.height);
 
-        int l = 0, r = 0, t = 0, b = 0;
+        int L, R, T, B;
 
         if (mode == BorderMode.Pixels)
         {
-            l = Mathf.Clamp(leftPx, 0, w - 1);
-            r = Mathf.Clamp(rightPx, 0, w - 1);
-            t = Mathf.Clamp(topPx, 0, h - 1);
-            b = Mathf.Clamp(bottomPx, 0, h - 1);
+            L = Mathf.Clamp(leftPx,   0, w);
+            R = Mathf.Clamp(rightPx,  0, w);
+            T = Mathf.Clamp(topPx,    0, h);
+            B = Mathf.Clamp(bottomPx, 0, h);
         }
         else if (mode == BorderMode.Percent)
         {
-            l = Mathf.Clamp(Mathf.RoundToInt(w * leftPercent), 0, w - 1);
-            r = Mathf.Clamp(Mathf.RoundToInt(w * rightPercent), 0, w - 1);
-            t = Mathf.Clamp(Mathf.RoundToInt(h * topPercent), 0, h - 1);
-            b = Mathf.Clamp(Mathf.RoundToInt(h * bottomPercent), 0, h - 1);
+            L = Mathf.Clamp(Mathf.RoundToInt(w * leftPercent),   0, w);
+            R = Mathf.Clamp(Mathf.RoundToInt(w * rightPercent),  0, w);
+            T = Mathf.Clamp(Mathf.RoundToInt(h * topPercent),    0, h);
+            B = Mathf.Clamp(Mathf.RoundToInt(h * bottomPercent), 0, h);
         }
         else // AutoDetectAlpha
         {
-            // 읽기 가능 토글
             bool prevReadable = importer.isReadable;
             importer.isReadable = true;
             importer.SaveAndReimport();
 
-            Texture2D tex = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
-            if (tex != null)
+            int x0 = Mathf.RoundToInt(spriteRect.x);
+            int y0 = Mathf.RoundToInt(spriteRect.y);
+            var tex = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+            TryAutoDetect(tex, x0, y0, w, h, alphaThreshold, marginSafety, out L, out R, out T, out B);
+
+            if (autodetectClampToEven == true)
             {
-                TryAutoDetect(tex, spriteRect, alphaThreshold, marginSafety, out l, out r, out t, out b);
+                if ((L & 1) == 1) L++;
+                if ((R & 1) == 1) R++;
+                if ((T & 1) == 1) T++;
+                if ((B & 1) == 1) B++;
             }
 
             importer.isReadable = prevReadable;
             importer.SaveAndReimport();
-
-            if (autodetectClampToEven == true)
-            {
-                if ((l % 2) != 0) l++;
-                if ((r % 2) != 0) r++;
-                if ((t % 2) != 0) t++;
-                if ((b % 2) != 0) b++;
-            }
         }
 
-        // 센터 폭/높이 0 방지
-        int centerW = w - (l + r);
-        int centerH = h - (t + b);
-        if (centerW <= 0) { int reduce = 1 - centerW; r = Mathf.Max(0, r - reduce); }
-        if (centerH <= 0) { int reduce = 1 - centerH; b = Mathf.Max(0, b - reduce); }
+        if (ensurePositiveCenter == true)
+        {
+            // centerW/H 최소 1px 보장. (넘치면 균형 축소)
+            BalanceClamp(ref L, ref R, w);
+            BalanceClamp(ref B, ref T, h);
+        }
+        else
+        {
+            // 절대값 그대로 쓰되, Unity 제약 때문에 너무 큰 값은 잘라냄
+            L = Mathf.Clamp(L, 0, w - 1);
+            R = Mathf.Clamp(R, 0, w - 1);
+            T = Mathf.Clamp(T, 0, h - 1);
+            B = Mathf.Clamp(B, 0, h - 1);
+            // L+R 또는 T+B가 size-1을 넘어가면 Unity 내부에서 어차피 보정됨
+        }
 
-        // Unity의 Vector4(border)는 (left, bottom, right, top) 순서!
-        return new Vector4(l, b, r, t);
+        return new Vector4(L, B, R, T);
     }
 
-    private static void TryAutoDetect(Texture2D tex, Rect rect, byte alphaTh, int safety, out int L, out int R, out int T, out int B)
+    private void BalanceClamp(ref int a, ref int b, int size)
     {
-        // rect 영역의 알파를 스캔해 투명 -> 불투명으로 넘어가는 첫 컬럼/로우를 찾는다.
-        // 전형적인 라운드 캡슐/버튼에서 외곽 투명, 내부 불투명이라는 가정.
-        int x0 = Mathf.RoundToInt(rect.x);
-        int y0 = Mathf.RoundToInt(rect.y);
-        int w = Mathf.RoundToInt(rect.width);
-        int h = Mathf.RoundToInt(rect.height);
+        int sum = a + b;
+        if (sum <= size - 1) return;
+
+        int over = sum - (size - 1);
+        if (sum == 0) return;
+
+        float ra = a / (float)sum;
+        int reduceA = Mathf.RoundToInt(over * ra);
+        int reduceB = over - reduceA;
+
+        a = Mathf.Max(0, a - reduceA);
+        b = Mathf.Max(0, b - reduceB);
+
+        while (a + b > size - 1)
+        {
+            if (a >= b && a > 0) a--;
+            else if (b > 0) b--;
+            else break;
+        }
+    }
+
+    private static void TryAutoDetect(Texture2D tex, int x0, int y0, int w, int h, byte alphaTh, int safety, out int L, out int R, out int T, out int B)
+    {
+        if (tex == null) { L = R = T = B = 0; return; }
 
         Func<Color32, bool> Opaque = c => c.a >= alphaTh;
 
@@ -357,16 +424,16 @@ public class BatchSpriteBorderSetterWindow : EditorWindow
     }
 }
 
-// ------------------------------------------------------------
-// 폴더/패턴별 자동 적용을 원하면: 설정 SO + Postprocessor
-// 해당 SO를 프로젝트 어디든 생성하고 값만 채우면, 새로운 텍스쳐 임포트 시 자동 적용.
+// ──────────────────────────────────────────────────────────────────────────
+// 규칙 SO + Postprocessor
+// ──────────────────────────────────────────────────────────────────────────
 
 [Serializable]
 public class SpriteBorderRule
 {
-    public string pathContains;     // 예: "/UI/Buttons/"
+    public string pathContains;
     public int left = 32, right = 32, top = 32, bottom = 32;
-    public bool percent = false;    // true면 0~1 비율로 처리
+    public bool percent = false;
     public float leftPercent = 0.12f, rightPercent = 0.12f, topPercent = 0.12f, bottomPercent = 0.12f;
     public bool meshFullRect = true;
     public bool setPPU = false;
@@ -412,9 +479,12 @@ public class SpriteBorderPostprocessor : AssetPostprocessor
         }
     }
 
+    // ★ 수동 적용 중이면 완전히 패스
+    private bool ShouldSkip() => SpriteBorderApplyGuard.InManualApply == true || Config == null;
+
     void OnPreprocessTexture()
     {
-        if (Config == null) return;
+        if (ShouldSkip()) return;
 
         var importer = assetImporter as TextureImporter;
         if (importer == null) return;
@@ -426,46 +496,36 @@ public class SpriteBorderPostprocessor : AssetPostprocessor
             if (string.IsNullOrEmpty(rule.pathContains) == false &&
                 path.IndexOf(rule.pathContains, StringComparison.OrdinalIgnoreCase) >= 0)
             {
-                // 1) 스프라이트로 강제
                 importer.textureType = TextureImporterType.Sprite;
 
-                // 2) MeshType을 TextureImporterSettings 경유로 설정(컴파일 심볼 이슈 회피)
                 var tis = new TextureImporterSettings();
                 importer.ReadTextureSettings(tis);
                 tis.spriteMeshType = rule.meshFullRect == true ? SpriteMeshType.FullRect : SpriteMeshType.Tight;
                 importer.SetTextureSettings(tis);
 
-                // 3) 기타 옵션
                 importer.textureCompression = rule.compression;
-                if (rule.setPPU == true)
-                {
-                    importer.spritePixelsPerUnit = rule.ppu;
-                }
+                if (rule.setPPU == true) importer.spritePixelsPerUnit = rule.ppu;
 
-                // 4) Single인 경우에만 즉시 보더 지정 (퍼센트는 Postprocess에서)
-                if (importer.spriteImportMode == SpriteImportMode.Single)
+                if (importer.spriteImportMode == SpriteImportMode.Single && rule.percent == false)
                 {
-                    if (rule.percent == false)
-                    {
-                        // Unity Vector4 순서: (Left, Bottom, Right, Top)
-                        importer.spriteBorder = new Vector4(rule.left, rule.bottom, rule.right, rule.top);
-                    }
+                    importer.spriteBorder = new Vector4(rule.left, rule.bottom, rule.right, rule.top);
                 }
                 break;
             }
         }
     }
 
-
     void OnPostprocessTexture(Texture2D texture)
     {
-        if (Config == null) return;
+        if (ShouldSkip()) return;
+
         var importer = (TextureImporter)assetImporter;
         string path = importer.assetPath;
 
         foreach (var rule in Config.rules)
         {
-            if (string.IsNullOrEmpty(rule.pathContains) == false && path.IndexOf(rule.pathContains, StringComparison.OrdinalIgnoreCase) >= 0)
+            if (string.IsNullOrEmpty(rule.pathContains) == false &&
+                path.IndexOf(rule.pathContains, StringComparison.OrdinalIgnoreCase) >= 0)
             {
                 bool changed = false;
 
@@ -475,17 +535,21 @@ public class SpriteBorderPostprocessor : AssetPostprocessor
                     {
                         int w = texture.width;
                         int h = texture.height;
-                        int l = Mathf.RoundToInt(w * rule.leftPercent);
-                        int r = Mathf.RoundToInt(w * rule.rightPercent);
-                        int t = Mathf.RoundToInt(h * rule.topPercent);
-                        int b = Mathf.RoundToInt(h * rule.bottomPercent);
-                        importer.spriteBorder = new Vector4(l, b, r, t);
+                        int L = Mathf.RoundToInt(w * rule.leftPercent);
+                        int R = Mathf.RoundToInt(w * rule.rightPercent);
+                        int T = Mathf.RoundToInt(h * rule.topPercent);
+                        int B = Mathf.RoundToInt(h * rule.bottomPercent);
+
+                        // 최소 센터(선호시 균형 축소). 퍼센트 규칙이라도 과도합 방지 차원.
+                        BalanceClampStatic(ref L, ref R, w);
+                        BalanceClampStatic(ref B, ref T, h);
+
+                        importer.spriteBorder = new Vector4(L, B, R, T);
                         changed = true;
                     }
                 }
                 else
                 {
-                    // Multiple
                     var metas = importer.spritesheet;
                     if (metas != null && metas.Length > 0)
                     {
@@ -495,16 +559,26 @@ public class SpriteBorderPostprocessor : AssetPostprocessor
                             int w = Mathf.RoundToInt(m.rect.width);
                             int h = Mathf.RoundToInt(m.rect.height);
 
+                            int L, R, T, B;
                             if (rule.percent == false)
-                                m.border = new Vector4(rule.left, rule.bottom, rule.right, rule.top);
+                            {
+                                L = Mathf.Clamp(rule.left, 0, w);
+                                R = Mathf.Clamp(rule.right, 0, w);
+                                T = Mathf.Clamp(rule.top, 0, h);
+                                B = Mathf.Clamp(rule.bottom, 0, h);
+                            }
                             else
-                                m.border = new Vector4(
-                                    Mathf.RoundToInt(w * rule.leftPercent),
-                                    Mathf.RoundToInt(h * rule.bottomPercent),
-                                    Mathf.RoundToInt(w * rule.rightPercent),
-                                    Mathf.RoundToInt(h * rule.topPercent)
-                                );
+                            {
+                                L = Mathf.Clamp(Mathf.RoundToInt(w * rule.leftPercent),   0, w);
+                                R = Mathf.Clamp(Mathf.RoundToInt(w * rule.rightPercent),  0, w);
+                                T = Mathf.Clamp(Mathf.RoundToInt(h * rule.topPercent),    0, h);
+                                B = Mathf.Clamp(Mathf.RoundToInt(h * rule.bottomPercent), 0, h);
+                            }
 
+                            BalanceClampStatic(ref L, ref R, w);
+                            BalanceClampStatic(ref B, ref T, h);
+
+                            m.border = new Vector4(L, B, R, T);
                             metas[i] = m;
                         }
                         importer.spritesheet = metas;
@@ -514,18 +588,33 @@ public class SpriteBorderPostprocessor : AssetPostprocessor
 
                 if (changed == true)
                 {
-                    // 저장
-                    EditorApplication.delayCall += () =>
-                    {
-                        try
-                        {
-                            importer.SaveAndReimport();
-                        }
-                        catch { /* ignore */ }
-                    };
+                    try { importer.SaveAndReimport(); } catch { /* ignore */ }
                 }
                 break;
             }
+        }
+    }
+
+    private static void BalanceClampStatic(ref int a, ref int b, int size)
+    {
+        int sum = a + b;
+        if (sum <= size - 1) return;
+
+        int over = sum - (size - 1);
+        if (sum == 0) return;
+
+        float ra = a / (float)sum;
+        int reduceA = Mathf.RoundToInt(over * ra);
+        int reduceB = over - reduceA;
+
+        a = Mathf.Max(0, a - reduceA);
+        b = Mathf.Max(0, b - reduceB);
+
+        while (a + b > size - 1)
+        {
+            if (a >= b && a > 0) a--;
+            else if (b > 0) b--;
+            else break;
         }
     }
 }

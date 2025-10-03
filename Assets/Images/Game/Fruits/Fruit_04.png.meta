@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: 1e067ef57ed2d4bf08e31edac610ee84
+guid: 3746e7d70e0ca4acfbfd90b79fd065c4
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: -926292271650541543
-    second: btnline_blue_0
+      213: -2071402251805495154
+    second: Fruit_04_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -46,13 +46,13 @@ TextureImporter:
   nPOTScale: 0
   lightmap: 0
   compressionQuality: 50
-  spriteMode: 1
+  spriteMode: 2
   spriteExtrude: 1
-  spriteMeshType: 0
+  spriteMeshType: 1
   alignment: 0
   spritePivot: {x: 0.5, y: 0.5}
-  spritePixelsToUnits: 256
-  spriteBorder: {x: 136, y: 140, z: 119, w: 115}
+  spritePixelsToUnits: 120
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
   spriteGenerateFallbackPhysicsShape: 1
   alphaUsage: 1
   alphaIsTransparency: 1
@@ -72,7 +72,7 @@ TextureImporter:
   platformSettings:
   - serializedVersion: 4
     buildTarget: DefaultTexturePlatform
-    maxTextureSize: 256
+    maxTextureSize: 512
     resizeAlgorithm: 0
     textureFormat: -1
     textureCompression: 1
@@ -113,23 +113,23 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: btnline_blue_0
+      name: Fruit_04_0
       rect:
         serializedVersion: 2
-        x: 0
-        y: 0
-        width: 280
-        height: 280
+        x: 195
+        y: 195
+        width: 120
+        height: 120
       alignment: 0
-      pivot: {x: 0.5, y: 0.5}
+      pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 910741e26162523f0800000000000000
-      internalID: -926292271650541543
+      spriteID: e80703270a6e043e0800000000000000
+      internalID: -2071402251805495154
       vertices: []
       indices: 
       edges: []
@@ -138,7 +138,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 5e97eb03825dee720800000000000000
+    spriteID: 
     internalID: 0
     vertices: []
     indices: 
@@ -148,7 +148,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      btnline_blue_0: -926292271650541543
+      Fruit_04_0: -2071402251805495154
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

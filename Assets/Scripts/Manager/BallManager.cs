@@ -128,6 +128,25 @@ public class BallManager : MonoBehaviour
         }
     }
 
+    public float GetBallSpriteSize(int level)
+    {
+        switch (level)
+        {
+            default: return 1f * boxSize;
+            case 1: return boxSize * 0.57f;
+            case 2: return boxSize * 0.42f;
+            case 3: return boxSize * 2.1f;
+            case 4: return boxSize * 2.3f;
+            case 5: return boxSize * 2.9f;
+            case 6: return boxSize * 3.5f;
+            case 7: return boxSize * 3.7f;
+            case 8: return boxSize * 5.0f;
+            case 9: return boxSize * 5.9f;
+            case 10: return boxSize * 6.0f;
+            case 11: return boxSize * 7.8f;
+        }
+    }
+
     public Color GetBallColor(int level)
     {
         // Unity 내장에 없는 색은 직접 정의

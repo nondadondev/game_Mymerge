@@ -45,7 +45,7 @@ public class BallState : MonoBehaviour
     }
 
     public void RenewColor() { RenewColor(ballLevel); }
-    public void RenewColor(int level) { spr.color = BallManager.i.GetBallColor(level); }
+    public void RenewColor(int level) { spr.sprite = BallSpriteStorage.i.GetFruitSprite(level); }
 
     public void DoRecoverSize()
     {
