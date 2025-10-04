@@ -100,6 +100,14 @@ public class UpdateManager : MonoBehaviour
         {
             Time.timeScale = 0.01f;
         }
+        else if (Keyboard.current.aKey.wasPressedThisFrame)
+        {
+            PopupDirector.i.Show(PopupType.SETTINGS);
+        }
+        else if (Keyboard.current.sKey.wasPressedThisFrame)
+        {
+            PopupDirector.i.Hide(PopupType.SETTINGS);
+        }
         
     }
 }
