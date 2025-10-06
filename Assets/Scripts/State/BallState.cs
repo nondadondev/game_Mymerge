@@ -13,6 +13,8 @@ public class BallState : MonoBehaviour
     public bool isMergeSet = false;   // 병합 예약
     public bool isGrowingUp = false;  // 성장 연출 중
     public bool isSpawnUp = false;
+    public bool isSetOnTop = false;
+    public int countColliderSound = 0;
 
     [FormerlySerializedAs("Transform_00")] [Header("Refs")]
     public Transform transform_00;
@@ -22,8 +24,9 @@ public class BallState : MonoBehaviour
 
     private void OnEnable()
     {
+        Debug.Log(gameObject.name+" is OnEnable!!s");
         // 매니저 리스트 등록
-        if (BallManager.i != null) BallManager.i.AddListBall(this);
+        BallManager.i.AddListBall(this);
     }
 
     private void OnDisable()
@@ -78,8 +81,9 @@ public class BallState : MonoBehaviour
     private void OnCollisionEnter2D(Collision2D collision)
     {
         // 태그 빠르게 필터
-        if (!collision.collider.CompareTag("Ball"))
+        if (!collision.collider.CompareTag("Ball") && countColliderSound < 2)
         {
+            countColliderSound++;
             float fastest = Mathf.Max(rigidbody2D.linearVelocity.magnitude, rigidbody2D.linearVelocity.magnitude);
 
             if (fastest > BallManager.i.speed_f)
@@ -93,12 +97,13 @@ public class BallState : MonoBehaviour
             return;
         }
 
-        if (isGrowingUp) return;
-        if (isSpawnUp || collision.collider.GetComponent<BallState>().isSpawnUp) return;
+        if (isGrowingUp || isSetOnTop || isSpawnUp) return;
         
-        // if (collision.collider.GetComponent<BallState>().isGrowingUp) return;
-        //한번 부딪치고 다시 멀어졌다가 돌아올 때는 상관없은데 붙은 채로 머물면서 있을 때는 isGrowingUp이 해소된 상태에도 계속 무시돼서 문제
-
+        if (collision.collider.gameObject.CompareTag("Ball") == false) return;
+        BallState other = collision.collider.GetComponent<BallState>();
+        if (other == null) return;
+        if (other.isSpawnUp == true || other.isSetOnTop == true) return;
+        
         // 나 자신은 this, 상대는 collider에서 바로 가져오기
         BallState myState = this;
         BallState otherState = collision.collider.GetComponent<BallState>();

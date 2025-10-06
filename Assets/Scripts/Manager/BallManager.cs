@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.UI;
 using UnityEngine.Serialization;
 
 public class BallManager : MonoBehaviour
@@ -18,8 +19,10 @@ public class BallManager : MonoBehaviour
     public GameObject prf_Ball;
     public Transform nowBall;
     public bool isNowBallWaiting;
-
     public float nowBallSize = 0.2f;
+
+    public int nextBallLevel = 1;
+    public Image IconFruit;
     
     [FormerlySerializedAs("pos_Top")] [Header("공 보조")]
     public Transform pos_TopTop;
@@ -46,6 +49,34 @@ public class BallManager : MonoBehaviour
         nowBall.localScale = nowBall.localScale * boxSize;
     }
 
+    public void PushBall(Vector3 worldPos)
+    {
+        if (ballIndex == 0)
+        {
+            CreateBall(worldPos, nextBallLevel);
+            nextBallLevel = 1;
+        }
+        else if (ballIndex < 5)
+        {
+            CreateBall(worldPos, ballIndex);
+            nextBallLevel = ballIndex + 1;
+        }
+        else if (ballIndex > 35)
+        {
+            int nextLevel = UnityEngine.Random.Range(1, 6);
+            CreateBall(worldPos, nextBallLevel);
+            nextBallLevel = nextLevel;
+        }
+        else
+        {
+            int nextLevel = UnityEngine.Random.Range(1, 5);
+            CreateBall(worldPos, nextBallLevel);
+            nextBallLevel = nextLevel;
+        }
+
+        IconFruit.sprite = BallSpriteStorage.i.GetFruitSprite(nextBallLevel);
+        IconFruit.transform.localScale = (GetBallSize(nextBallLevel)*3+2)*0.25f*Vector3.one;
+    }
     public void CreateBall(Vector3 pos, int level)
     {
         StartCoroutine(DoCreateBall(pos, level));
@@ -55,6 +86,7 @@ public class BallManager : MonoBehaviour
     {
         Debug.Log("nowball is = " + nowBall.gameObject.name);
         nowBall.gameObject.GetComponent<Rigidbody2D>().bodyType = RigidbodyType2D.Dynamic;
+        nowBall.gameObject.GetComponent<BallState>().isSetOnTop = false;
         isNowBallWaiting = true;
         nowBall = null;
         
@@ -68,6 +100,7 @@ public class BallManager : MonoBehaviour
         state.isSpawnUp = true;
         state.rigidbody2D.bodyType = RigidbodyType2D.Kinematic;
         nowBall = obj.transform;
+        state.isSetOnTop = true;
         nowBallSize = GetBallSize(level);
         isNowBallWaiting = false;
         state.ballLevel = level;
@@ -76,6 +109,7 @@ public class BallManager : MonoBehaviour
         
         state.ballIndex = ballIndex++;
         state.gameObject.name = "ball_" + state.ballIndex;
+        
         // 성장 팝 애니메이션
         Vector3 targetScale = Vector3.one * GetBallSize(level);
         Vector3 startScale = targetScale * 0.5f;
@@ -170,19 +204,13 @@ public class BallManager : MonoBehaviour
 
     public void AddListBall(BallState state)
     {
-        // HashSet으로 중복 O(1) 체크
-        if (set_Indices.Add(state.ballIndex))
-        {
-            list_BallState.Add(state);
-        }
+        Debug.Log("Adding Ball. index is = " + state.ballIndex);
+        list_BallState.Add(state);
     }
 
     public void RemoveListBall(BallState state)
     {
-        if (set_Indices.Remove(state.ballIndex))
-        {
-            list_BallState.Remove(state);
-        }
+        list_BallState.Remove(state);
     }
 
     public void DoMergeBall(BallState stateA, BallState stateB)
@@ -193,21 +221,27 @@ public class BallManager : MonoBehaviour
         // 레벨 다르면 사운드만 (속도 조건에 따라)
         if (stateA.ballLevel != stateB.ballLevel)
         {
-            // 둘 중 더 빠른 쪽으로 판단
-            float fastest = Mathf.Max(stateA.rigidbody2D.linearVelocity.magnitude, stateB.rigidbody2D.linearVelocity.magnitude);
+            if (stateA.countColliderSound < 3 || stateB.countColliderSound < 3)
+            {
+                stateA.countColliderSound++;
+                stateB.countColliderSound++;
+                
+                // 둘 중 더 빠른 쪽으로 판단
+                float fastest = Mathf.Max(stateA.rigidbody2D.linearVelocity.magnitude, stateB.rigidbody2D.linearVelocity.magnitude);
 
-            if (fastest > speed_f)
-            {
-                SoundManager.i.PlaySFX(SoundType.MARIMBA, 1f);
-            }
-            else if (fastest > speed_m)
-            {
-                SoundManager.i.PlaySFX(SoundType.MARIMBA, 0.45f);
-            }
-            else
-            {
-                // 개발 중에만 보고 싶다면 주석 처리 권장
-                // Debug.Log($"Fail. speed = {fastest:0.00} m/s");
+                if (fastest > speed_f)
+                {
+                    SoundManager.i.PlaySFX(SoundType.MARIMBA, 1f);
+                }
+                else if (fastest > speed_m)
+                {
+                    SoundManager.i.PlaySFX(SoundType.MARIMBA, 0.45f);
+                }
+                else
+                {
+                    // 개발 중에만 보고 싶다면 주석 처리 권장
+                    // Debug.Log($"Fail. speed = {fastest:0.00} m/s");
+                }
             }
             return;
         }
@@ -274,6 +308,7 @@ public class BallManager : MonoBehaviour
         // 원본 제거
         RemoveListBall(stateA);
         RemoveListBall(stateB);
+        yield return null;
         Destroy(ta.gameObject);
         Destroy(tb.gameObject);
 

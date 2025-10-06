@@ -33,24 +33,7 @@ public class UpdateManager : MonoBehaviour
                     worldPos.y = BallManager.i.height_Top; // 높이를 0으로 고정
                     Debug.Log("outside the box. pos : " + worldPos.ToString());
 
-                    if (BallManager.i.ballIndex == 0)
-                    {
-                        BallManager.i.CreateBall(worldPos, 1);
-                    }
-                    else if (BallManager.i.ballIndex < 5)
-                    {
-                        BallManager.i.CreateBall(worldPos, BallManager.i.ballIndex);
-                    }
-                    else if (BallManager.i.ballIndex > 35)
-                    {
-                        int targetLevel = UnityEngine.Random.Range(1, 6);
-                        BallManager.i.CreateBall(worldPos, targetLevel);
-                    }
-                    else
-                    {
-                        int targetLevel = UnityEngine.Random.Range(1, 5);
-                        BallManager.i.CreateBall(worldPos, targetLevel);
-                    }
+                    BallManager.i.PushBall(worldPos);
                 }
             }
             
@@ -71,7 +54,7 @@ public class UpdateManager : MonoBehaviour
                     worldPos.x = BoxManager.i.pos_BottomRight.x - (BallManager.i.nowBallSize * 0.5f) - 0.01f;
                 }
                 BallManager.i.nowBall.position = worldPos;
-                BallManager.i.trf_guideLine.position = worldPos + new Vector3(0, -2.9f, 0);
+                BallManager.i.trf_guideLine.position = worldPos + new Vector3(0, -2.61f, 0);
             }
         }
         
@@ -107,6 +90,15 @@ public class UpdateManager : MonoBehaviour
         else if (Keyboard.current.sKey.wasPressedThisFrame)
         {
             PopupDirector.i.Hide(PopupType.SETTINGS);
+        }else if (Keyboard.current.qKey.wasPressedThisFrame)
+        {
+            GameManager.i.GameFail();
+        }else if (Keyboard.current.wKey.wasPressedThisFrame)
+        {
+            GameManager.i.GameRestart();
+        }else if (Keyboard.current.eKey.wasPressedThisFrame)
+        {
+            GameManager.i.GameStart();
         }
         
     }

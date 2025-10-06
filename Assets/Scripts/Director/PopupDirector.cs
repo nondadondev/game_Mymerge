@@ -1,11 +1,10 @@
-using System;
 using System.Collections.Generic;
 using UnityEngine;
 
 public enum PopupType
 {
     SETTINGS,
-    GAMERESULT,
+    GAME_RESULT,
 }
 
 public class PopupDirector : MonoBehaviour
@@ -14,7 +13,6 @@ public class PopupDirector : MonoBehaviour
 
     [Header("등록된 팝업들")]
     public List<BasePopup> list_Popup = new List<BasePopup>();
-
     private Stack<BasePopup> stack_OpenPopup = new Stack<BasePopup>();
 
     private void Awake()

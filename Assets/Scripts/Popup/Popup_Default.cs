@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public class Popup_Settings : BasePopup
+public class Popup_Default : BasePopup
 {
     public void OnClickBgmToggle()
     {
