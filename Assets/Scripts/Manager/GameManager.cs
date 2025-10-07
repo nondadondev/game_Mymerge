@@ -10,9 +10,29 @@ public class GameManager : MonoBehaviour
         i = this;
     }
 
+    private void Start()
+    {
+        GameStart();
+    }
+
     public void GameStart()
     {
-        
+        GameReset();
+        BallManager.i.RenewIconNextFruit();
+        BallManager.i.DoCreateBall(UpdateManager.i.GetClampedWorldPos(), 1);
+    }
+
+    public void GameReset()
+    {
+        for (int i = BallManager.i.list_BallState.Count - 1; i >= 0; i--)
+        {
+            Destroy(BallManager.i.list_BallState[i].gameObject);
+        }
+        BallManager.i.list_BallState.Clear();
+        BallManager.i.ballIndex = 0;
+
+        ScoreManager.i.nowScore = 0;
+        ScoreManager.i.RenewScoreText();
     }
 
     public void GameEnd()
@@ -26,7 +46,7 @@ public class GameManager : MonoBehaviour
             rb.bodyType = RigidbodyType2D.Kinematic;
         }
         
-        
+        ScoreManager.i.CompareNowScore();
     }
     public void GameFail()
     {

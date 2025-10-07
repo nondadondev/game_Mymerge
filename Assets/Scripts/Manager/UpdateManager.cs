@@ -38,21 +38,15 @@ public class UpdateManager : MonoBehaviour
             }
             
             // === 마우스를 따라다니는 공 이동 처리 ===
-            if (BallManager.i.nowBall != null) //<<== 조건 이상함. nowBall은 언제든 사라지고 다시 태어남
+            if (BallManager.i.nowBall != null)
             {
                 Vector2 screenPos = Pointer.current.position.ReadValue();
-                Vector3 worldPos = Camera.main.ScreenToWorldPoint(
-                    new Vector3(screenPos.x, screenPos.y, 10f) // 카메라 거리 유지
+                Vector3 worldPos = GetClampedWorldPos(
+                    screenPos,
+                    BallManager.i.nowBallSize,
+                    BallManager.i.height_Top
                 );
-                worldPos.y = BallManager.i.height_Top; // 높이를 0으로 고정
-                if (worldPos.x < BoxManager.i.pos_TopLeft.x + (BallManager.i.nowBallSize * 0.5f))
-                {
-                    worldPos.x = BoxManager.i.pos_TopLeft.x + (BallManager.i.nowBallSize * 0.5f) + 0.01f;
-                }
-                else if(worldPos.x > BoxManager.i.pos_BottomRight.x - (BallManager.i.nowBallSize * 0.5f))
-                {
-                    worldPos.x = BoxManager.i.pos_BottomRight.x - (BallManager.i.nowBallSize * 0.5f) - 0.01f;
-                }
+
                 BallManager.i.nowBall.position = worldPos;
                 BallManager.i.trf_guideLine.position = worldPos + new Vector3(0, -2.61f, 0);
             }
@@ -101,5 +95,33 @@ public class UpdateManager : MonoBehaviour
             GameManager.i.GameStart();
         }
         
+    }
+
+    public Vector3 GetClampedWorldPos()
+    {
+        return GetClampedWorldPos(Pointer.current.position.ReadValue(),
+            BallManager.i.GetBallSize(1),
+            BallManager.i.pos_TopTop.position.y);
+    }
+    public static Vector3 GetClampedWorldPos(Vector2 screenPos, float ballSize, float heightTop)
+    {
+        // 스크린 좌표 → 월드 좌표 변환
+        Vector3 worldPos = Camera.main.ScreenToWorldPoint(
+            new Vector3(screenPos.x, screenPos.y, 10f) // 카메라 거리 고정
+        );
+
+        // y축 고정 (예: BallManager.i.height_Top)
+        worldPos.y = heightTop;
+
+        // BoxManager 기준으로 X 좌표 보정
+        float leftLimit = BoxManager.i.pos_TopLeft.x + (ballSize * 0.5f);
+        float rightLimit = BoxManager.i.pos_BottomRight.x - (ballSize * 0.5f);
+
+        if (worldPos.x < leftLimit)
+            worldPos.x = leftLimit + 0.01f;
+        else if (worldPos.x > rightLimit)
+            worldPos.x = rightLimit - 0.01f;
+
+        return worldPos;
     }
 }

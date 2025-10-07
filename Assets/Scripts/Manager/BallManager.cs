@@ -14,12 +14,13 @@ public class BallManager : MonoBehaviour
     public Transform trf_WallRoot;
 
     public float boxSize = 1f;
+    public float baseLevel1 = 0.4f;
     
     [Header("공")]
     public GameObject prf_Ball;
     public Transform nowBall;
     public bool isNowBallWaiting;
-    public float nowBallSize = 0.2f;
+    public float nowBallSize = 0.27f;
 
     public int nextBallLevel = 1;
     public Image IconFruit;
@@ -53,38 +54,40 @@ public class BallManager : MonoBehaviour
     {
         if (ballIndex == 0)
         {
-            CreateBall(worldPos, nextBallLevel);
+            DoCreateBall(worldPos, nextBallLevel);
             nextBallLevel = 1;
         }
-        else if (ballIndex < 5)
+        else if (ballIndex < 3)
         {
-            CreateBall(worldPos, ballIndex);
+            DoCreateBall(worldPos, ballIndex);
             nextBallLevel = ballIndex + 1;
         }
         else if (ballIndex > 35)
         {
             int nextLevel = UnityEngine.Random.Range(1, 6);
-            CreateBall(worldPos, nextBallLevel);
+            DoCreateBall(worldPos, nextBallLevel);
             nextBallLevel = nextLevel;
         }
         else
         {
             int nextLevel = UnityEngine.Random.Range(1, 5);
-            CreateBall(worldPos, nextBallLevel);
+            DoCreateBall(worldPos, nextBallLevel);
             nextBallLevel = nextLevel;
         }
 
-        IconFruit.sprite = BallSpriteStorage.i.GetFruitSprite(nextBallLevel);
-        IconFruit.transform.localScale = (GetBallSize(nextBallLevel)*3+2)*0.25f*Vector3.one;
+        RenewIconNextFruit();
     }
-    public void CreateBall(Vector3 pos, int level)
+    public void DoCreateBall(Vector3 pos, int level)
     {
-        StartCoroutine(DoCreateBall(pos, level));
+        StartCoroutine(CreateBall(pos, level));
     }
 
-    private IEnumerator DoCreateBall(Vector3 pos, int level)
+    private IEnumerator CreateBall(Vector3 pos, int level)
     {
-        Debug.Log("nowball is = " + nowBall.gameObject.name);
+        if (ballIndex != 0)
+        {
+            ScoreManager.i.AddNowScore(GetBallScore(level));
+        }
         nowBall.gameObject.GetComponent<Rigidbody2D>().bodyType = RigidbodyType2D.Dynamic;
         nowBall.gameObject.GetComponent<BallState>().isSetOnTop = false;
         isNowBallWaiting = true;
@@ -144,7 +147,6 @@ public class BallManager : MonoBehaviour
         // 레벨9: 5.90
         // 레벨10: 6.00
         // 레벨11: 7.80
-        float baseLevel1 = 0.2f;
         switch (level)
         {
             default: return 1f * boxSize;
@@ -162,6 +164,25 @@ public class BallManager : MonoBehaviour
         }
     }
 
+    public int GetBallScore(int level)
+    {
+        switch (level)
+        {
+            default: return 1000;
+            case 1: return 5;
+            case 2: return 10;
+            case 3: return 20;
+            case 4: return 30;
+            case 5: return 50;
+            case 6: return 70;
+            case 7: return 100;
+            case 8: return 150;
+            case 9: return 300;
+            case 10: return 450;
+            case 11: return 600;
+        }
+    }
+    
     public float GetBallSpriteSize(int level)
     {
         switch (level)
@@ -264,7 +285,7 @@ public class BallManager : MonoBehaviour
             BallState nowBallState = nowBall.GetComponent<BallState>();
             if (stateA == nowBallState || stateB == nowBallState)
             {
-                CreateBall(nowBall.transform.position, BallManager.i.ballIndex + 1);
+                DoCreateBall(nowBall.transform.position, BallManager.i.ballIndex + 1);
             }
         }
         
@@ -316,11 +337,18 @@ public class BallManager : MonoBehaviour
         GameObject obj = Instantiate(prf_Ball, targetPoint, Quaternion.identity);
         obj.transform.parent = trf_Box;
         BallState stateC = obj.GetComponent<BallState>();
+        ScoreManager.i.AddNowScore(GetBallScore(stateC.ballLevel * 2));
         stateC.ballLevel = targetLevel;
         stateC.isGrowingUp = true;
         stateC.RenewSize(stateC.ballLevel, 0.5f); // 0.5에서 팽창 연출 시작
         stateC.gameObject.name = "ballM_" + stateC.ballIndex;
 
         stateC.DoRecoverSize();
+    }
+
+    public void RenewIconNextFruit()
+    {
+        IconFruit.sprite = BallSpriteStorage.i.GetFruitSprite(nextBallLevel);
+        IconFruit.transform.localScale = (GetBallSize(nextBallLevel)*3+2)*0.25f*Vector3.one;
     }
 }
