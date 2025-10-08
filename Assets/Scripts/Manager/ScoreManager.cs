@@ -68,6 +68,6 @@ public class ScoreManager : MonoBehaviour
     private void RenewHighScoreText()
     {
         if (highScoreText != null)
-            highScoreText.text = highScore.ToString("N0", CultureInfo.InvariantCulture);
+            highScoreText.text = "HIGH : " + highScore.ToString("N0", CultureInfo.InvariantCulture);
     }
 }

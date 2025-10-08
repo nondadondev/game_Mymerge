@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using Random = System.Random;
 
@@ -14,7 +15,14 @@ public class UpdateManager : MonoBehaviour
     void Update()
     {
         if (Pointer.current != null)
-        {
+        {            
+            if (EventSystem.current.IsPointerOverGameObject())
+                return; // ← UI 클릭이면 아래 로직 실행 안 함
+            if (PopupDirector.i.isAnyPopupOpen)
+            {
+                return;
+            }
+            
             // 클릭/터치가 시작됐을 때
             if (Pointer.current.press.wasReleasedThisFrame)
             {

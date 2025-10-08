@@ -225,7 +225,6 @@ public class BallManager : MonoBehaviour
 
     public void AddListBall(BallState state)
     {
-        Debug.Log("Adding Ball. index is = " + state.ballIndex);
         list_BallState.Add(state);
     }
 
@@ -252,11 +251,11 @@ public class BallManager : MonoBehaviour
 
                 if (fastest > speed_f)
                 {
-                    SoundManager.i.PlaySFX(SoundType.MARIMBA, 1f);
+                    SoundManager.i.PlaySFX(SoundType.POP, 1f);
                 }
                 else if (fastest > speed_m)
                 {
-                    SoundManager.i.PlaySFX(SoundType.MARIMBA, 0.45f);
+                    SoundManager.i.PlaySFX(SoundType.POP, 0.45f);
                 }
                 else
                 {

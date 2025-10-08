@@ -1,29 +1,28 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
-
-public enum SoundType
-{
-    BGM,
-    POP,
-    MEOW,
-    CLICK,
-    CLAP,
-    COIN,
-    CRACK,
-    IMPACT,
-    WHOOSH,
-    DRUM,
-    MARIMBA
-}
+using UnityEngine.UI;
 
 public class SoundManager : MonoBehaviour
 {
     public static SoundManager i;
 
     [Header("Sound Settings")]
+    public bool isSFXOn = true;
+    public bool isBGMOn = true;
+    public bool isVibOn = true;
     [Range(0f, 1f)] public float sfxVolume = 1f;
     [Range(0f, 1f)] public float bgmVolume = 1f;
+
+    public Image Img_BGM;
+    public Image Img_SFX;
+    public Image Img_Vib;
+    
+    private const string KEY_SFX_ON   = "SFX_ON";
+    private const string KEY_BGM_ON   = "BGM_ON";
+    private const string KEY_VIB_ON   = "VIB_ON";
+    private const string KEY_SFX_VOL  = "SFX_VOL";
+    private const string KEY_BGM_VOL  = "BGM_VOL";
 
     [Header("Audio Sources")]
     public AudioSource sfxAudioSource;
@@ -115,10 +114,13 @@ public class SoundManager : MonoBehaviour
             case 2: PlaySFX(SoundType.POP, 1); return;
             case 3: PlaySFX(SoundType.POP, 2); return;
             case 4: PlaySFX(SoundType.POP, 3); return;
-            case 5: PlaySFX(SoundType.CLAP, 0); return;
-            case 6: PlaySFX(SoundType.CLAP, 1); return;
-            case 7: PlaySFX(SoundType.CLAP, 2); return;
-            case 8: PlaySFX(SoundType.IMPACT, 0); return;
+            case 5: PlaySFX(SoundType.Fruit_Mid, 0); return;
+            case 6: PlaySFX(SoundType.Fruit_Mid, 1); return;
+            case 7: PlaySFX(SoundType.Fruit_Mid, 2); return;
+            case 8: PlaySFX(SoundType.Fruit_Mid, 3); return;
+            case 9: PlaySFX(SoundType.Fruit_Low, 0); return;
+            case 10: PlaySFX(SoundType.Fruit_Low, 0); return;
+            case 11: PlaySFX(SoundType.Fruit_Low, 0); return;
         }
     }
 
@@ -129,6 +131,7 @@ public class SoundManager : MonoBehaviour
     public void PlaySFX(SoundType soundType, float volume)
     {
         if (sfxAudioSource == null) return;
+        
 
         float currentTime = Time.time;
         if (lastPlayedTime.TryGetValue(soundType, out float lastTime))
@@ -282,4 +285,5 @@ public class SoundManager : MonoBehaviour
         UnityEditor.EditorUtility.SetDirty(this);
     }
 #endif
+    
 }

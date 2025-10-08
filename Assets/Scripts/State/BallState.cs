@@ -88,11 +88,11 @@ public class BallState : MonoBehaviour
 
             if (fastest > BallManager.i.speed_f)
             {
-                SoundManager.i.PlaySFX(SoundType.MARIMBA, 1f);
+                SoundManager.i.PlaySFX(SoundType.POP, 1f);
             }
             else if (fastest > BallManager.i.speed_m)
             {
-                SoundManager.i.PlaySFX(SoundType.MARIMBA, 0.45f);
+                SoundManager.i.PlaySFX(SoundType.POP, 0.45f);
             }
             return;
         }

@@ -8,6 +8,7 @@ public abstract class BasePopup : MonoBehaviour
 {
     [FormerlySerializedAs("popupName")] [Header("Popup 타입")]
     public PopupType popupType;
+    public bool isPopupOpen = false;
 
     protected CanvasGroup canvasGroup;
     [Header("공통 버튼")]
@@ -63,6 +64,7 @@ public abstract class BasePopup : MonoBehaviour
         canvasGroup.alpha = 1f;
         canvasGroup.interactable = true;
         canvasGroup.blocksRaycasts = true;
+        isPopupOpen = true;
 
         Debug.Log($"[Popup] {popupType} 열림");
     }
@@ -78,6 +80,8 @@ public abstract class BasePopup : MonoBehaviour
         canvasGroup.alpha = 0f;
         canvasGroup.interactable = false;
         canvasGroup.blocksRaycasts = false;
+        isPopupOpen = false;
+        PopupDirector.i.TestIsAnyPopupOpen();
 
         Debug.Log($"[Popup] {popupType} 닫힘");
     }

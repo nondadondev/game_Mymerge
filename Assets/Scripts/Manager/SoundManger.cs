@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 public enum SoundType
 {
@@ -14,7 +15,17 @@ public enum SoundType
     IMPACT,
     WHOOSH,
     DRUM,
-    MARIMBA
+    MARIMBA,
+    Fruit_High,
+    Fruit_Mid,
+    Fruit_Low,
+}
+
+public enum SoundSet
+{
+    BGM,
+    SFX,
+    Vib
 }
 
 public class SoundManager : MonoBehaviour
@@ -22,8 +33,21 @@ public class SoundManager : MonoBehaviour
     public static SoundManager i;
 
     [Header("Sound Settings")]
+    public bool isSFXOn = true;
+    public bool isBGMOn = true;
+    public bool isVibOn = true;
     [Range(0f, 1f)] public float sfxVolume = 1f;
     [Range(0f, 1f)] public float bgmVolume = 1f;
+
+    public Image Img_BGM;
+    public Image Img_SFX;
+    public Image Img_Vib;
+    
+    private const string KEY_SFX_ON   = "SFX_ON";
+    private const string KEY_BGM_ON   = "BGM_ON";
+    private const string KEY_VIB_ON   = "VIB_ON";
+    private const string KEY_SFX_VOL  = "SFX_VOL";
+    private const string KEY_BGM_VOL  = "BGM_VOL";
 
     [Header("Audio Sources")]
     public AudioSource sfxAudioSource;
@@ -85,9 +109,25 @@ public class SoundManager : MonoBehaviour
 
     private void LoadSoundsFromResources()
     {
+        string[] categories = { "Fruit" }; 
+        // 💡 필요한 그룹명은 여기에 자유롭게 추가
+
         foreach (SoundType soundType in Enum.GetValues(typeof(SoundType)))
         {
-            string folderPath = $"Sound/{soundType.ToString().ToLower()}";
+            string enumName = soundType.ToString(); // 예: "Fruit_High"
+            string folderPath = $"Sound/{enumName.ToLower()}"; // 기본 경로
+
+            // ✅ 다중 그룹 접두사 처리
+            foreach (var category in categories)
+            {
+                if (enumName.StartsWith(category + "_", StringComparison.OrdinalIgnoreCase))
+                {
+                    string subFolder = enumName.Substring(category.Length + 1).ToLower(); // "_" 이후 이름 추출
+                    folderPath = $"Sound/{category}/{subFolder}";
+                    break;
+                }
+            }
+
             AudioClip[] clips = Resources.LoadAll<AudioClip>(folderPath);
 
             if (clips.Length > 0)
@@ -95,12 +135,10 @@ public class SoundManager : MonoBehaviour
                 Array.Sort(clips, (x, y) => string.Compare(x.name, y.name, StringComparison.Ordinal));
                 soundDictionary[soundType] = clips;
                 loadedSoundCounts[soundType] = clips.Length;
-                // 필요 시 개발 단계에서만 로그
-                // Debug.Log($"Loaded {clips.Length} clips for {soundType}");
+                // Debug.Log($"Loaded {clips.Length} clips for {soundType} from {folderPath}");
             }
             else
             {
-                // 폴더가 없어도 조용히 패스 가능
                 // Debug.LogWarning($"No clips found for {soundType} in path: {folderPath}");
             }
         }
@@ -111,14 +149,23 @@ public class SoundManager : MonoBehaviour
     {
         switch (level)
         {
-            default: PlaySFX(SoundType.POP, 0); return;
-            case 2: PlaySFX(SoundType.POP, 1); return;
-            case 3: PlaySFX(SoundType.POP, 2); return;
-            case 4: PlaySFX(SoundType.POP, 3); return;
-            case 5: PlaySFX(SoundType.CLAP, 0); return;
-            case 6: PlaySFX(SoundType.CLAP, 1); return;
-            case 7: PlaySFX(SoundType.CLAP, 2); return;
-            case 8: PlaySFX(SoundType.IMPACT, 0); return;
+            default: PlaySFX(SoundType.POP); return;
+            case 2: PlaySFX(SoundType.POP); return;
+            case 3: PlaySFX(SoundType.POP); return;
+            case 4: PlaySFX(SoundType.Fruit_High); return;
+            case 5: PlaySFX(SoundType.Fruit_High); return;
+            case 6: PlaySFX(SoundType.Fruit_Mid); return;
+            case 7: PlaySFX(SoundType.Fruit_Mid); return;
+            case 8: PlaySFX(SoundType.Fruit_Mid); return;
+            case 9: PlaySFX(SoundType.Fruit_Low); return;
+            case 10: 
+                PlaySFX(SoundType.Fruit_Low);
+                PlaySFX(SoundType.IMPACT);
+                return;
+            case 11: 
+                PlaySFX(SoundType.Fruit_Low); 
+                PlaySFX(SoundType.IMPACT);
+                return;
         }
     }
 
@@ -128,6 +175,7 @@ public class SoundManager : MonoBehaviour
     // 랜덤 + 볼륨 지정 + 과호출/반복 방지
     public void PlaySFX(SoundType soundType, float volume)
     {
+        if (isSFXOn == false) return;
         if (sfxAudioSource == null) return;
 
         float currentTime = Time.time;
@@ -163,6 +211,7 @@ public class SoundManager : MonoBehaviour
     // 특정 인덱스 + 볼륨
     public void PlaySFX(SoundType soundType, int clipIndex, float volume)
     {
+        if (isSFXOn == false) return;
         if (sfxAudioSource == null) return;
         if (!soundDictionary.TryGetValue(soundType, out var clips) || clips.Length == 0) return;
         if (clipIndex < 0 || clipIndex >= clips.Length) return;
@@ -173,6 +222,7 @@ public class SoundManager : MonoBehaviour
     // BGM 제어
     public void PlayBGM(AudioClip clip, bool loop = true)
     {
+        if (isBGMOn == false) return;
         if (bgmAudioSource == null || clip == null) return;
         bgmAudioSource.clip = clip;
         bgmAudioSource.loop = loop;
@@ -221,4 +271,81 @@ public class SoundManager : MonoBehaviour
 
     public AudioClip[] GetAllClips(SoundType soundType)
         => soundDictionary.TryGetValue(soundType, out var clips) ? clips : Array.Empty<AudioClip>();
+    
+    
+
+    public void ToggleAudioSettings(SoundSet soundSet)
+    {
+        switch (soundSet)
+        {
+            default:
+            case SoundSet.BGM:
+                isBGMOn = !isBGMOn;
+                break;
+            case SoundSet.SFX:
+                isSFXOn = !isSFXOn;
+                break;
+            case SoundSet.Vib:
+                isVibOn = !isVibOn;
+                break;
+        }
+        SaveAudioSettings();
+        RenewAudioSettings();
+    }
+
+    public void RenewAudioSettings()
+    {
+        if (isBGMOn)
+        {
+            Debug.Log("BGM ON");
+            Img_BGM.sprite = UISpriteStorage.i.GetUIBtn(UIColor.Blue);
+        }
+        else
+        {
+            Debug.Log("BGM OFF");
+            Img_BGM.sprite = UISpriteStorage.i.GetUIBtn(UIColor.Gray);
+        }
+        if (isSFXOn)
+        {
+            Debug.Log("SFX ON");
+            Img_SFX.sprite = UISpriteStorage.i.GetUIBtn(UIColor.Blue);
+        }
+        else
+        {
+            Debug.Log("SFX OFF");
+            Img_SFX.sprite = UISpriteStorage.i.GetUIBtn(UIColor.Gray);
+        }
+        if (isVibOn)
+        {
+            Debug.Log("Vib ON");
+            Img_Vib.sprite = UISpriteStorage.i.GetUIBtn(UIColor.Blue);
+        }
+        else
+        {
+            Debug.Log("Vib OFF");
+            Img_Vib.sprite = UISpriteStorage.i.GetUIBtn(UIColor.Gray);
+        }
+    }
+    private void LoadAudioSettings()
+    {
+        isSFXOn   = PlayerPrefs.GetInt(KEY_SFX_ON, 1) == 1;
+        isBGMOn   = PlayerPrefs.GetInt(KEY_BGM_ON, 1) == 1;
+        isVibOn   = PlayerPrefs.GetInt(KEY_VIB_ON, 1) == 1;
+        sfxVolume = PlayerPrefs.GetFloat(KEY_SFX_VOL, 1f);
+        bgmVolume = PlayerPrefs.GetFloat(KEY_BGM_VOL, 1f);
+
+        // 현재 오디오소스에 볼륨 반영 (플래그에 따른 차단은 네가 별도 처리 예정)
+        if (sfxAudioSource != null) sfxAudioSource.volume = sfxVolume;
+        if (bgmAudioSource != null) bgmAudioSource.volume = bgmVolume;
+    }
+
+    private void SaveAudioSettings()
+    {
+        PlayerPrefs.SetInt(KEY_SFX_ON, isSFXOn == true ? 1 : 0);
+        PlayerPrefs.SetInt(KEY_BGM_ON, isBGMOn == true ? 1 : 0);
+        PlayerPrefs.SetInt(KEY_VIB_ON, isVibOn == true ? 1 : 0);
+        PlayerPrefs.SetFloat(KEY_SFX_VOL, Mathf.Clamp01(sfxVolume));
+        PlayerPrefs.SetFloat(KEY_BGM_VOL, Mathf.Clamp01(bgmVolume));
+        PlayerPrefs.Save();
+    }
 }

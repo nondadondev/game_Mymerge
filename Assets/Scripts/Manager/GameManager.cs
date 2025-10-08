@@ -30,6 +30,7 @@ public class GameManager : MonoBehaviour
         }
         BallManager.i.list_BallState.Clear();
         BallManager.i.ballIndex = 0;
+        BallManager.i.nextBallLevel = 1;
 
         ScoreManager.i.nowScore = 0;
         ScoreManager.i.RenewScoreText();
@@ -60,7 +61,9 @@ public class GameManager : MonoBehaviour
 
     public void GameRestart()
     {
-        
+        //GameEnd를 거치지 않고 바로 GameStart로 넘어갑니다
+        PopupDirector.i.HideAll();
+        GameStart();
     }
 
     public void GameQuit()

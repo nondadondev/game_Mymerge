@@ -15,6 +15,8 @@ public class PopupDirector : MonoBehaviour
     public List<BasePopup> list_Popup = new List<BasePopup>();
     private Stack<BasePopup> stack_OpenPopup = new Stack<BasePopup>();
 
+    public bool isAnyPopupOpen = false;
+    
     private void Awake()
     {
         if (i == null) i = this;
@@ -31,6 +33,7 @@ public class PopupDirector : MonoBehaviour
             return;
         }
 
+        isAnyPopupOpen = true;
         popup.Show();
         stack_OpenPopup.Push(popup);
     }
@@ -81,5 +84,18 @@ public class PopupDirector : MonoBehaviour
     private BasePopup GetPopup(PopupType popupType)
     {
         return list_Popup.Find(p => p.popupType == popupType);
+    }
+
+    public void TestIsAnyPopupOpen()
+    {
+        isAnyPopupOpen = false;
+        for (int i = 0; i < list_Popup.Count; i++)
+        {
+            if (list_Popup[i].isPopupOpen)
+            {
+                isAnyPopupOpen = true;
+                break;
+            }
+        }
     }
 }
