@@ -16,6 +16,9 @@ public class BallState : MonoBehaviour
     public bool isSetOnTop = false;
     public int countColliderSound = 0;
 
+    [Header("Ball State")] 
+    public SpriteRenderer spr_effect;
+    
     [FormerlySerializedAs("Transform_00")] [Header("Refs")]
     public Transform transform_00;
     public SpriteRenderer spr;
@@ -88,11 +91,11 @@ public class BallState : MonoBehaviour
 
             if (fastest > BallManager.i.speed_f)
             {
-                SoundManager.i.PlaySFX(SoundType.POP, 1f);
+                SoundManager.i.PlaySFX(SoundType.POP, 0.45f);
             }
             else if (fastest > BallManager.i.speed_m)
             {
-                SoundManager.i.PlaySFX(SoundType.POP, 0.45f);
+                SoundManager.i.PlaySFX(SoundType.POP, 0.2f);
             }
             return;
         }

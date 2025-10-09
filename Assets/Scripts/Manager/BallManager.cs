@@ -75,6 +75,8 @@ public class BallManager : MonoBehaviour
             nextBallLevel = nextLevel;
         }
 
+        PowerManager.i.AddPowerChargingCount();
+
         RenewIconNextFruit();
     }
     public void DoCreateBall(Vector3 pos, int level)
@@ -251,11 +253,11 @@ public class BallManager : MonoBehaviour
 
                 if (fastest > speed_f)
                 {
-                    SoundManager.i.PlaySFX(SoundType.POP, 1f);
+                    SoundManager.i.PlaySFX(SoundType.POP, 0.45f);
                 }
                 else if (fastest > speed_m)
                 {
-                    SoundManager.i.PlaySFX(SoundType.POP, 0.45f);
+                    SoundManager.i.PlaySFX(SoundType.POP, 0.2f);
                 }
                 else
                 {

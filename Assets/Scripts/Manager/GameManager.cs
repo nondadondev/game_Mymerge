@@ -34,6 +34,11 @@ public class GameManager : MonoBehaviour
 
         ScoreManager.i.nowScore = 0;
         ScoreManager.i.RenewScoreText();
+
+        PowerManager.i.powerCount = 3;
+        PowerManager.i.RenewPowerLight();
+        PowerManager.i.powerChargingCount = 0;
+        PowerManager.i.text_ChargingCount.text = "00/30";
     }
 
     public void GameEnd()

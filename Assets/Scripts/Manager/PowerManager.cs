@@ -1,5 +1,8 @@
 using System;
 using UnityEngine;
+using UnityEngine.UI;
+using DG.Tweening;
+using TMPro;
 
 public class PowerManager : MonoBehaviour
 {
@@ -25,6 +28,16 @@ public class PowerManager : MonoBehaviour
     [SerializeField] private int maxHits = 128;                  // 한 번에 처리할 최대 콜라이더 수
     [SerializeField] private bool drawGizmos = true;             // 반경 시각화
 
+    [Header("Display")] 
+    public Transform trf_PowerCountBox;
+    public Image light_01;
+    public Image light_02;
+    public Image light_03;
+    public TextMeshProUGUI text_ChargingCount;
+    
+    public int powerCount = 3;
+    public int powerChargingCount = 0;
+    
     private Camera mainCam;
     private Collider2D[] hitsBuffer;
 
@@ -40,6 +53,75 @@ public class PowerManager : MonoBehaviour
         hitsBuffer = new Collider2D[maxHits];
     }
 
+    private void Start()
+    {
+        StartPos_trf_PowerCountBox = trf_PowerCountBox.localPosition;
+    }
+
+    public void AddPowerChargingCount()
+    {
+        powerChargingCount++;
+        if (powerChargingCount % 30 == 0)
+        {
+            AddPowerCount(1);
+            powerChargingCount -= 30;
+        }
+
+        if (powerCount < 3)
+        {
+            text_ChargingCount.text = powerChargingCount.ToString("D2") + "/30";
+        }
+        else
+        {
+            text_ChargingCount.text = "FULL";
+        }
+    }
+    
+    public void AddPowerCount(int count)
+    {
+        powerCount += count;
+
+        if (count > 0)
+        {
+            SoundManager.i.PlaySFX(SoundType.COIN, 0);
+        }
+        if(powerCount > 3)
+        {
+            powerCount = 3;
+            ScoreManager.i.AddNowScore(100);
+        }else if (powerCount < 0)
+        {
+            powerCount = 0;
+        }
+
+        RenewPowerLight();
+    }
+    
+    public void RenewPowerLight()
+    {
+        if (powerCount <= 0)
+        {
+            light_01.sprite = UISpriteStorage.i.GetUIBtn(UIColor.Gray);
+            light_02.sprite = UISpriteStorage.i.GetUIBtn(UIColor.Gray);
+            light_03.sprite = UISpriteStorage.i.GetUIBtn(UIColor.Gray);
+        }else if (powerCount == 1)
+        {
+            light_01.sprite = UISpriteStorage.i.GetUIBtn(UIColor.Red);
+            light_02.sprite = UISpriteStorage.i.GetUIBtn(UIColor.Gray);
+            light_03.sprite = UISpriteStorage.i.GetUIBtn(UIColor.Gray);
+        }else if (powerCount == 2)
+        {
+            light_01.sprite = UISpriteStorage.i.GetUIBtn(UIColor.Red);
+            light_02.sprite = UISpriteStorage.i.GetUIBtn(UIColor.Red);
+            light_03.sprite = UISpriteStorage.i.GetUIBtn(UIColor.Gray);
+        }
+        else
+        {
+            light_01.sprite = UISpriteStorage.i.GetUIBtn(UIColor.Red);
+            light_02.sprite = UISpriteStorage.i.GetUIBtn(UIColor.Red);
+            light_03.sprite = UISpriteStorage.i.GetUIBtn(UIColor.Red);
+        }
+    }
 
     private Vector3 ScreenToWorld(Vector2 screenPos)
     {
@@ -57,6 +139,23 @@ public class PowerManager : MonoBehaviour
     /// </summary>
     public void ExplodeAt(Vector3 worldPos)
     {
+        AddPowerCount(-1);
+        trf_PowerCountBox.DOKill();
+        
+        trf_PowerCountBox
+            .DOShakePosition(0.4f, 20f, 20, 90f, false, true)
+            .OnComplete(() => trf_PowerCountBox.localPosition = StartPos_trf_PowerCountBox);
+        
+        if (powerCount < 3)
+        {
+            text_ChargingCount.text = powerChargingCount.ToString("D2") + "/30";
+        }
+        else
+        {
+            text_ChargingCount.text = "FULL";
+        }
+        SoundManager.i.PlaySFX(SoundType.CLAP);
+        EffectDirector.i.Act_ClickEffect(new Vector2(worldPos.x, worldPos.y));
         int count = Physics2D.OverlapCircleNonAlloc(worldPos, radius, hitsBuffer, targetMask);
 
         for (int i = 0; i < count; i++)
@@ -129,6 +228,18 @@ public class PowerManager : MonoBehaviour
         }
     }
 
+    public Vector3 StartPos_trf_PowerCountBox;
+    
+    public void AlarmNoPowerCount()
+    {
+        SoundManager.i.PlaySFX(SoundType.Signature);
+        trf_PowerCountBox.DOKill();
+        
+        trf_PowerCountBox
+            .DOShakePosition(0.4f, 20f, 20, 90f, false, true)
+            .OnComplete(() => trf_PowerCountBox.localPosition = StartPos_trf_PowerCountBox);
+    }
+    
     private void OnDrawGizmosSelected()
     {
         if (drawGizmos == false)

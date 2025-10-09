@@ -34,7 +34,14 @@ public class UpdateManager : MonoBehaviour
                 if (BoxManager.i.IsInBox(worldPos))
                 {
                     Debug.Log("inside the box. pos : " + worldPos.ToString());
-                    PowerManager.i.ExplodeAt(worldPos);
+                    if (PowerManager.i.powerCount > 0)
+                    {
+                        PowerManager.i.ExplodeAt(worldPos);
+                    }
+                    else
+                    {
+                        PowerManager.i.AlarmNoPowerCount();
+                    }
                 }
                 else if(BallManager.i.isNowBallWaiting == false)
                 {

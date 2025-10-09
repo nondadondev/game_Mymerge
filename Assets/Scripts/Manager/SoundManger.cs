@@ -19,6 +19,7 @@ public enum SoundType
     Fruit_High,
     Fruit_Mid,
     Fruit_Low,
+    Signature,
 }
 
 public enum SoundSet
