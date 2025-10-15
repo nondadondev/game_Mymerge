@@ -50,6 +50,38 @@ public class BallManager : MonoBehaviour
         nowBall.localScale = nowBall.localScale * boxSize;
     }
 
+    public void PunchBall()
+    {
+        Vector3 worldPos = new Vector3(0, height_Top, 0);
+        
+        if (ballIndex == 0)
+        {
+            DoCreateBallAndPunch(worldPos, nextBallLevel);
+            nextBallLevel = 1;
+        }
+        else if (ballIndex < 3)
+        {
+            DoCreateBallAndPunch(worldPos, ballIndex);
+            nextBallLevel = ballIndex + 1;
+        }
+        else if (ballIndex > 35)
+        {
+            int nextLevel = UnityEngine.Random.Range(1, 6);
+            DoCreateBallAndPunch(worldPos, nextBallLevel);
+            nextBallLevel = nextLevel;
+        }
+        else
+        {
+            int nextLevel = UnityEngine.Random.Range(1, 5);
+            DoCreateBallAndPunch(worldPos, nextBallLevel);
+            nextBallLevel = nextLevel;
+        }
+
+        PowerManager.i.AddPowerChargingCount();
+
+        RenewIconNextFruit();
+        
+    }
     public void PushBall(Vector3 worldPos)
     {
         if (ballIndex == 0)
@@ -136,6 +168,69 @@ public class BallManager : MonoBehaviour
         state.isSpawnUp = false;
     }
 
+    public void DoCreateBallAndPunch(Vector3 pos, int level)
+    {
+        StartCoroutine(CreateBallAndPunch(pos, level));
+    }
+
+    private IEnumerator CreateBallAndPunch(Vector3 pos, int level)
+    {
+        if (ballIndex != 0)
+        {
+            ScoreManager.i.AddNowScore(GetBallScore(level));
+        }
+        nowBall.gameObject.GetComponent<Rigidbody2D>().bodyType = RigidbodyType2D.Dynamic;
+        nowBall.gameObject.GetComponent<BallState>().isSetOnTop = false;
+        isNowBallWaiting = true;
+        nowBall = null;
+
+        
+        GameObject obj = Instantiate(prf_Ball, pos, Quaternion.identity);
+        obj.transform.parent = trf_Box;
+        BallState state = obj.GetComponent<BallState>();
+        
+        state.isSpawnUp = true;
+        state.rigidbody2D.bodyType = RigidbodyType2D.Kinematic;
+        nowBall = obj.transform;
+        state.isSetOnTop = true;
+        nowBallSize = GetBallSize(level);
+        isNowBallWaiting = false;
+        state.ballLevel = level;
+        state.isGrowingUp = true;
+        state.RenewSize(state.ballLevel, 0.5f); // 0.5에서 팽창 연출 시작
+        
+        Rigidbody2D rb = state.rigidbody2D;
+        rb.linearVelocity = Vector2.zero;
+        rb.angularVelocity = 0f;
+        float downwardImpulse = 12f;
+        float minDownSpeed = 10f;
+        rb.AddForce(Vector2.down * downwardImpulse, ForceMode2D.Impulse);
+        if (rb.linearVelocity.y > -minDownSpeed) rb.linearVelocity = new Vector2(rb.linearVelocity.x, -minDownSpeed);
+        
+        state.ballIndex = ballIndex++;
+        state.gameObject.name = "ball_" + state.ballIndex;
+        
+        // 성장 팝 애니메이션
+        Vector3 targetScale = Vector3.one * GetBallSize(level);
+        Vector3 startScale = targetScale * 0.5f;
+
+        float timer = 0;
+        float moveTime = 0.03f;
+        
+        timer = 0f;
+        //새 공 크기 확대
+        while (timer < moveTime)
+        {
+            timer += Time.deltaTime;
+            float t = timer / moveTime;
+            state.transform.localScale = Vector3.Lerp(startScale, targetScale, t);
+            yield return null;
+        }
+        state.transform.localScale = targetScale;
+        state.isGrowingUp = false;
+        state.isSpawnUp = false;
+    }    
+    
     public float GetBallSize(int level)
     {
         // 레벨1: 1.00

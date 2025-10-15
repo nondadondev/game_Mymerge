@@ -108,6 +108,9 @@ public class UpdateManager : MonoBehaviour
         }else if (Keyboard.current.eKey.wasPressedThisFrame)
         {
             GameManager.i.GameStart();
+        }else if (Keyboard.current.spaceKey.wasPressedThisFrame)
+        {
+            BallManager.i.PunchBall();
         }
         
     }
@@ -139,4 +142,5 @@ public class UpdateManager : MonoBehaviour
 
         return worldPos;
     }
+    
 }
