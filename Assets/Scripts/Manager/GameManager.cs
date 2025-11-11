@@ -28,9 +28,16 @@ public class GameManager : MonoBehaviour
         {
             Destroy(BallManager.i.list_BallState[i].gameObject);
         }
+
         BallManager.i.list_BallState.Clear();
         BallManager.i.ballIndex = 0;
         BallManager.i.nextBallLevel = 1;
+        Vector3 worldPos = UpdateManager.i.GetClampedWorldPos(
+            Vector3.zero,
+            BallManager.i.nowBallSize,
+            BallManager.i.height_Top
+        );
+        BallManager.i.nowBall.position = worldPos;
 
         ScoreManager.i.nowScore = 0;
         ScoreManager.i.RenewScoreText();
@@ -53,6 +60,7 @@ public class GameManager : MonoBehaviour
         }
         
         ScoreManager.i.CompareNowScore();
+        SoundManager.i.StopBGM();
     }
     public void GameFail()
     {
@@ -69,6 +77,7 @@ public class GameManager : MonoBehaviour
         //GameEnd를 거치지 않고 바로 GameStart로 넘어갑니다
         PopupDirector.i.HideAll();
         GameStart();
+        SoundManager.i.PlayBGM(0);
     }
 
     public void GameQuit()

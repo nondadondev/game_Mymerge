@@ -166,6 +166,11 @@ public class SoundManager : MonoBehaviour
     // 특정 인덱스 + 볼륨
     public void PlaySFX(SoundType soundType, int clipIndex, float volume)
     {
+        int x = 0;
+        while (x--> 0)
+        {
+            
+        }
         if (sfxAudioSource == null) return;
         if (!soundDictionary.TryGetValue(soundType, out var clips) || clips.Length == 0) return;
         if (clipIndex < 0 || clipIndex >= clips.Length) return;

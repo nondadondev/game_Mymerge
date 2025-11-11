@@ -1,4 +1,5 @@
 using System;
+using Unity.VisualScripting.Antlr3.Runtime.Tree;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
@@ -7,11 +8,16 @@ using Random = System.Random;
 public class UpdateManager : MonoBehaviour
 {
     public static UpdateManager i;
-
+    private Camera _camera;
+    private EventSystem _eventSystem;
     private void Awake()
     {
         i = this;
+        _camera = Camera.main;
+        _eventSystem  = EventSystem.current;
     }
+    
+    
     void Update()
     {
         if (Pointer.current != null)
@@ -33,7 +39,6 @@ public class UpdateManager : MonoBehaviour
 
                 if (BoxManager.i.IsInBox(worldPos))
                 {
-                    Debug.Log("inside the box. pos : " + worldPos.ToString());
                     if (PowerManager.i.powerCount > 0)
                     {
                         PowerManager.i.ExplodeAt(worldPos);
@@ -46,7 +51,6 @@ public class UpdateManager : MonoBehaviour
                 else if(BallManager.i.isNowBallWaiting == false)
                 {
                     worldPos.y = BallManager.i.height_Top; // 높이를 0으로 고정
-                    Debug.Log("outside the box. pos : " + worldPos.ToString());
 
                     BallManager.i.PushBall(worldPos);
                 }
@@ -63,7 +67,7 @@ public class UpdateManager : MonoBehaviour
                 );
 
                 BallManager.i.nowBall.position = worldPos;
-                BallManager.i.trf_guideLine.position = worldPos + new Vector3(0, -2.61f, 0);
+                BallManager.i.trf_guideLine.position = worldPos;
             }
         }
         
@@ -99,6 +103,10 @@ public class UpdateManager : MonoBehaviour
         else if (Keyboard.current.sKey.wasPressedThisFrame)
         {
             PopupDirector.i.Hide(PopupType.SETTINGS);
+        }
+        else if (Keyboard.current.dKey.wasPressedThisFrame)
+        {
+            Debug.Log("screen ratio = "  + ScreenTester.i.GetScreenRatio());
         }else if (Keyboard.current.qKey.wasPressedThisFrame)
         {
             GameManager.i.GameFail();
@@ -119,28 +127,38 @@ public class UpdateManager : MonoBehaviour
     {
         return GetClampedWorldPos(Pointer.current.position.ReadValue(),
             BallManager.i.GetBallSize(1),
-            BallManager.i.pos_TopTop.position.y);
+            BoxManager.i.anchor_BoxTopTop.position.y);
     }
-    public static Vector3 GetClampedWorldPos(Vector2 screenPos, float ballSize, float heightTop)
+    public Vector3 GetClampedWorldPos(Vector2 screenPos, float ballSize, float heightTop)
     {
-        // 스크린 좌표 → 월드 좌표 변환
         Vector3 worldPos = Camera.main.ScreenToWorldPoint(
             new Vector3(screenPos.x, screenPos.y, 10f) // 카메라 거리 고정
         );
-
-        // y축 고정 (예: BallManager.i.height_Top)
-        worldPos.y = heightTop;
-
         // BoxManager 기준으로 X 좌표 보정
-        float leftLimit = BoxManager.i.pos_TopLeft.x + (ballSize * 0.5f);
-        float rightLimit = BoxManager.i.pos_BottomRight.x - (ballSize * 0.5f);
+        float leftLimit = BoxManager.i.pos_BoxTopLeft.x + ((ballSize * 0.5f)*BoxManager.i.trf_Box.localScale.x);
+        float rightLimit = BoxManager.i.pos_BoxBottomRight.x - ((ballSize * 0.5f)*BoxManager.i.trf_Box.localScale.x);
+        
+        worldPos.y = heightTop;
+        
+        if (BallManager.i.isFirstTouch == false)
+        {
+            if (worldPos.x < leftLimit)
+                worldPos.x = leftLimit + 0.01f;
+            else if (worldPos.x > rightLimit)
+                worldPos.x = rightLimit - 0.01f;
 
-        if (worldPos.x < leftLimit)
-            worldPos.x = leftLimit + 0.01f;
-        else if (worldPos.x > rightLimit)
-            worldPos.x = rightLimit - 0.01f;
+            return worldPos;
+        }
+        else
+        {
+            if (worldPos.x >= leftLimit && worldPos.x <= rightLimit)
+            {
+                BallManager.i.isFirstTouch = false;
+            }
 
-        return worldPos;
+            worldPos.x = 0;
+            return worldPos;
+        }
     }
     
 }

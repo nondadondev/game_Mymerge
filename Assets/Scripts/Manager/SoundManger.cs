@@ -221,12 +221,25 @@ public class SoundManager : MonoBehaviour
     }
 
     // BGM 제어
-    public void PlayBGM(AudioClip clip, bool loop = true)
+    public void PlayBGM(int clipIndex, bool loop = true)
     {
-        if (isBGMOn == false) return;
-        if (bgmAudioSource == null || clip == null) return;
+        PlayBGM(clipIndex, loop, bgmVolume);
+    }
+    public void PlayBGM(int clipIndex, bool loop, float volume)
+    {
+        if (!isBGMOn) return;
+        if (bgmAudioSource == null) return;
+
+        // BGM 타입의 클립 목록 가져오기
+        if (!soundDictionary.TryGetValue(SoundType.BGM, out var clips) || clips.Length == 0) return;
+        if (clipIndex < 0 || clipIndex >= clips.Length) return;
+
+        var clip = clips[clipIndex];
+        if (clip == null) return;
+
         bgmAudioSource.clip = clip;
         bgmAudioSource.loop = loop;
+        bgmVolume = volume;
         bgmAudioSource.volume = bgmVolume;
         bgmAudioSource.Play();
     }
@@ -282,6 +295,14 @@ public class SoundManager : MonoBehaviour
             default:
             case SoundSet.BGM:
                 isBGMOn = !isBGMOn;
+                if (isBGMOn == false)
+                {
+                    StopBGM();
+                }
+                else
+                {
+                    PlayBGM(0);
+                }
                 break;
             case SoundSet.SFX:
                 isSFXOn = !isSFXOn;

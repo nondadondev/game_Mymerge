@@ -27,14 +27,11 @@ public class BallState : MonoBehaviour
 
     private void OnEnable()
     {
-        Debug.Log(gameObject.name+" is OnEnable!!s");
-        // 매니저 리스트 등록
         BallManager.i.AddListBall(this);
     }
 
     private void OnDisable()
     {
-        // 매니저 리스트 제거 (파괴/비활성 모두 커버)
         if (BallManager.i != null) BallManager.i.RemoveListBall(this);
     }
 
@@ -92,10 +89,12 @@ public class BallState : MonoBehaviour
             if (fastest > BallManager.i.speed_f)
             {
                 SoundManager.i.PlaySFX(SoundType.POP, 0.45f);
+                HapticManager.i.PlayOneShot(10, 100);
             }
             else if (fastest > BallManager.i.speed_m)
             {
                 SoundManager.i.PlaySFX(SoundType.POP, 0.2f);
+                HapticManager.i.PlayOneShot(10, 200);
             }
             return;
         }
@@ -107,7 +106,6 @@ public class BallState : MonoBehaviour
         if (other == null) return;
         if (other.isSpawnUp == true || other.isSetOnTop == true) return;
         
-        // 나 자신은 this, 상대는 collider에서 바로 가져오기
         BallState myState = this;
         BallState otherState = collision.collider.GetComponent<BallState>();
 

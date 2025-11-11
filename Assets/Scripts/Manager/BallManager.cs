@@ -10,6 +10,8 @@ public class BallManager : MonoBehaviour
 {
     public static BallManager i;
 
+    public bool isFirstTouch = true;
+    
     public Transform trf_Box;
     public Transform trf_WallRoot;
 
@@ -26,7 +28,6 @@ public class BallManager : MonoBehaviour
     public Image IconFruit;
     
     [FormerlySerializedAs("pos_Top")] [Header("공 보조")]
-    public Transform pos_TopTop;
     public float height_Top;
     [FormerlySerializedAs("trf_guide")] public Transform trf_guideLine;
 
@@ -45,9 +46,6 @@ public class BallManager : MonoBehaviour
     private void Awake()
     {
         i = this;
-        height_Top = pos_TopTop.position.y;
-        trf_WallRoot.localScale = Vector3.one * boxSize;
-        nowBall.localScale = nowBall.localScale * boxSize;
     }
 
     public void PunchBall()
@@ -246,18 +244,18 @@ public class BallManager : MonoBehaviour
         // 레벨11: 7.80
         switch (level)
         {
-            default: return 1f * boxSize;
-            case 1: return baseLevel1 * boxSize * 1;
-            case 2: return baseLevel1 * boxSize * 1.5f;
-            case 3: return baseLevel1 * boxSize * 2.1f;
-            case 4: return baseLevel1 * boxSize * 2.3f;
-            case 5: return baseLevel1 * boxSize * 2.9f;
-            case 6: return baseLevel1 * boxSize * 3.5f;
-            case 7: return baseLevel1 * boxSize * 3.7f;
-            case 8: return baseLevel1 * boxSize * 5.0f;
-            case 9: return baseLevel1 * boxSize * 5.9f;
-            case 10: return baseLevel1 * boxSize * 6.0f;
-            case 11: return baseLevel1 * boxSize * 7.8f;
+            default: return baseLevel1 * 1;
+            case 1: return baseLevel1 * 1;
+            case 2: return baseLevel1 * 1.5f;
+            case 3: return baseLevel1 * 2.1f;
+            case 4: return baseLevel1 * 2.3f;
+            case 5: return baseLevel1 * 2.9f;
+            case 6: return baseLevel1 * 3.5f;
+            case 7: return baseLevel1 * 3.7f;
+            case 8: return baseLevel1 * 5.0f;
+            case 9: return baseLevel1 * 5.9f;
+            case 10: return baseLevel1 * 6.5f;
+            case 11: return baseLevel1 * 7.8f;
         }
     }
 
@@ -349,10 +347,12 @@ public class BallManager : MonoBehaviour
                 if (fastest > speed_f)
                 {
                     SoundManager.i.PlaySFX(SoundType.POP, 0.45f);
+                    HapticManager.i.PlayOneShot(10, 100);
                 }
                 else if (fastest > speed_m)
                 {
                     SoundManager.i.PlaySFX(SoundType.POP, 0.2f);
+                    HapticManager.i.PlayOneShot(10, 200);
                 }
                 else
                 {
@@ -374,7 +374,7 @@ public class BallManager : MonoBehaviour
     {
         int targetLevel = stateA.ballLevel + 1;
         float timer = 0f;
-        float moveTime = 0.1f;
+        float moveTime = 0.05f;
 
         if (isNowBallWaiting == false)
         {
@@ -439,6 +439,7 @@ public class BallManager : MonoBehaviour
         stateC.RenewSize(stateC.ballLevel, 0.5f); // 0.5에서 팽창 연출 시작
         stateC.gameObject.name = "ballM_" + stateC.ballIndex;
 
+        HapticManager.i.PlayOneShot(30, 100);
         stateC.DoRecoverSize();
     }
 

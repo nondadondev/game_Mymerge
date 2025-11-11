@@ -10,7 +10,7 @@ public class PowerManager : MonoBehaviour
 
     [Header("Explosion Settings")]
     [SerializeField] private float radius = 3f;                  // 폭발 반경
-    [SerializeField] private float force = 20f;                  // 기본 임펄스 힘
+    [SerializeField] private float force = 100f;                  // 기본 임펄스 힘
     [SerializeField] private bool useDistanceFalloff = true;     // 거리 감쇠 사용 여부
     [SerializeField] private AnimationCurve falloff =            // 0(가까움)~1(멀리) 구간의 감쇠 커브
         AnimationCurve.EaseInOut(0f, 1f, 1f, 0f);
