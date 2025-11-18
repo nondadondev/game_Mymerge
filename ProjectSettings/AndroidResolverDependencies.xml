@@ -1,6 +1,6 @@
 <dependencies>
   <packages>
-    <package>com.applovin:applovin-sdk:13.5.0</package>
+    <package>com.applovin:applovin-sdk:13.5.1</package>
     <package>com.google.android.ump:user-messaging-platform:2.1.0</package>
   </packages>
   <files />
